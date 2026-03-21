@@ -29,10 +29,12 @@ import {
   getCreditScore,
   getWalletCluster,
   getTransactions,
+  getGraph,
   type WalletInfo,
   type CreditScoreResponse,
   type ClusterResponse,
   type TransactionItem,
+  type GraphResponse,
 } from "@/lib/api-client";
 import CategoryCard from "@/components/CategoryCard";
 import RiskAlert from "@/components/RiskAlert";
@@ -57,6 +59,7 @@ type DashboardState =
       score: CreditScoreResponse;
       cluster: ClusterResponse;
       transactions: TransactionItem[];
+      graphData: GraphResponse | null;
     };
 
 type TabId = "overview" | "network" | "flow" | "activity";
@@ -90,11 +93,13 @@ function DashboardContent({
       getCreditScore(address),
       getWalletCluster(address),
       getTransactions(address, undefined, 50),
-    ]).then(([walletRes, scoreRes, clusterRes, txRes]) => {
+      getGraph(address),
+    ]).then(([walletRes, scoreRes, clusterRes, txRes, graphRes]) => {
       const wallet = walletRes.status === "fulfilled" ? walletRes.value : null;
       const score = scoreRes.status === "fulfilled" ? scoreRes.value : null;
       const cluster = clusterRes.status === "fulfilled" ? clusterRes.value : null;
       const transactions = txRes.status === "fulfilled" ? txRes.value.transactions : [];
+      const graphData = graphRes.status === "fulfilled" ? graphRes.value : null;
 
       if (wallet || score) {
         setState({
@@ -115,9 +120,10 @@ function DashboardContent({
             signals: { direct_transfer: false, exchange_pattern: false, bridge_pattern: false, timing_similarity: false, gas_pattern: false },
           },
           transactions,
+          graphData,
         });
       } else {
-        const firstError = [walletRes, scoreRes, clusterRes, txRes]
+        const firstError = [walletRes, scoreRes, clusterRes, txRes, graphRes]
           .find((r) => r.status === "rejected");
         setState({
           status: "error",
