@@ -44,6 +44,9 @@ import TransactionTimeline from "@/components/dashboard/TransactionTimeline";
 import ClusterView from "@/components/dashboard/ClusterView";
 import type { NetworkNode, NetworkEdge } from "@/components/dashboard/NetworkGraph";
 import { toScoreResult } from "@/lib/score-adapter";
+import ScoreHistoryChart from "@/components/dashboard/ScoreHistoryChart";
+import BookmarkButton from "@/components/dashboard/BookmarkButton";
+import UserProfile from "@/components/UserProfile";
 
 type DashboardState =
   | { status: "loading" }
@@ -146,6 +149,7 @@ function DashboardContent({
               <span className="text-text-dim text-xs font-mono">{formatAddress(address)}</span>
               <span className="w-1.5 h-1.5 rounded-full bg-success animate-glow-pulse" />
             </div>
+            <BookmarkButton address={address} chain={state.status === "success" ? state.wallet.chain : "ethereum"} />
             <AuthButton />
             <LanguageSelector />
           </div>
@@ -465,6 +469,12 @@ function OverviewTab({
       >
         <ShareCard result={sr} />
       </motion.div>
+
+      {/* Score History Chart */}
+      <ScoreHistoryChart address={address} />
+
+      {/* User Profile & Bookmarks */}
+      <UserProfile />
 
       {/* Transaction Flow list */}
       <motion.div
