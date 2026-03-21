@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LogIn, LogOut } from "lucide-react";
+import { LogIn, LogOut, User as UserIcon } from "lucide-react";
 import Link from "next/link";
 import { isSupabaseConfigured, createClient } from "@/lib/supabase/client";
 import { useLanguage } from "./providers/LanguageProvider";
@@ -30,9 +30,14 @@ export default function AuthButton() {
   if (user) {
     return (
       <div className="flex items-center gap-2">
-        <span className="text-text-muted text-xs hidden sm:block">
-          {user.email?.split("@")[0]}
-        </span>
+        <Link
+          href="/profile"
+          className="flex items-center gap-1.5 px-2 py-1.5 text-xs text-text-muted hover:text-primary border border-border hover:border-primary/30 rounded-lg transition-all duration-200"
+          title="Profile"
+        >
+          <UserIcon className="w-3.5 h-3.5" />
+          <span className="hidden sm:block">{user.email?.split("@")[0]}</span>
+        </Link>
         <button
           onClick={async () => {
             const supabase = createClient();

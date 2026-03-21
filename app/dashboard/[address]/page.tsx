@@ -49,6 +49,8 @@ import { toScoreResult } from "@/lib/score-adapter";
 import ScoreHistoryChart from "@/components/dashboard/ScoreHistoryChart";
 import BookmarkButton from "@/components/dashboard/BookmarkButton";
 import UserProfile from "@/components/UserProfile";
+import TransactionFilter from "@/components/dashboard/TransactionFilter";
+import RiskPathTracer from "@/components/dashboard/RiskPathTracer";
 
 type DashboardState =
   | { status: "loading" }
@@ -453,7 +455,7 @@ function OverviewTab({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25 }}
       >
-        <RiskAlert riskAnalysis={sr.riskAnalysis} index={0} />
+        <RiskAlert riskAnalysis={sr.riskAnalysis} index={0} address={address} />
       </motion.div>
 
       {/* Category Cards */}
@@ -663,7 +665,32 @@ function NetworkTab({
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      <NetworkGraph nodes={nodes} edges={edges} width={700} height={450} />
+      <NetworkGraph
+        nodes={state.graphData?.nodes?.map(n => ({
+          id: n.address,
+          type: n.type as "wallet" | "exchange" | "protocol" | "risk",
+          label: n.address,
+          volume: 0,
+          chain: n.chain,
+        })) ?? nodes}
+        edges={state.graphData?.edges?.map(e => ({
+          source: e.from,
+          target: e.to,
+          amount: e.amount,
+          chain: e.chain,
+        })) ?? edges}
+        riskPaths={state.graphData?.risk_paths}
+        width={700}
+        height={450}
+      />
+
+      {/* Risk Path Tracer */}
+      {state.graphData?.risk_paths && (
+        <RiskPathTracer
+          riskPaths={state.graphData.risk_paths}
+          centerAddress={address}
+        />
+      )}
     </motion.div>
   );
 }
@@ -746,6 +773,15 @@ function ActivityTab({
       className="space-y-6"
     >
       <TransactionTimeline transactions={timelineData} />
+
+      {/* Transaction Filter / Search */}
+      <div className="glass-card p-5">
+        <h2 className="text-sm font-semibold text-text mb-4 flex items-center gap-2">
+          <Activity className="w-4 h-4 text-accent" />
+          {t("dash.recentTx")} — Filter & Search
+        </h2>
+        <TransactionFilter address={address} />
+      </div>
 
       {/* Volume Summary below the chart */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
