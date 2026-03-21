@@ -101,33 +101,30 @@ function DashboardContent({
       const transactions = txRes.status === "fulfilled" ? txRes.value.transactions : [];
       const graphData = graphRes.status === "fulfilled" ? graphRes.value : null;
 
-      if (wallet || score) {
+      // 필수 API 실패 시 에러 표시 (mock/fallback 없음)
+      const errors = [walletRes, scoreRes, clusterRes, txRes, graphRes]
+        .filter((r) => r.status === "rejected")
+        .map((r) => r.status === "rejected" ? String(r.reason) : "");
+
+      if (!wallet || !score) {
+        setState({
+          status: "error",
+          message: errors.length > 0
+            ? `API 호출 실패: ${errors.join(", ")}`
+            : "지갑 데이터를 불러올 수 없습니다",
+        });
+      } else {
         setState({
           status: "success",
-          wallet: wallet ?? {
-            address, chain: "ethereum", first_seen: null, last_seen: null,
-            tx_count: 0, wallet_age_days: 0, total_inflow_usdt: 0,
-            total_outflow_usdt: 0, unique_counterparties: 0,
-          },
-          score: score ?? {
-            cluster_id: "", wallets: [address], credit_score: 0,
-            risk_score: 0, trust_level: "Unknown", risk_level: "unknown",
-            features: {}, scored_at: "",
-          },
+          wallet,
+          score,
           cluster: cluster ?? {
             cluster_id: "", confidence: 0,
-            wallets: [{ address, chain: "ethereum", confidence: 1 }],
+            wallets: [{ address, chain: wallet.chain, confidence: 1 }],
             signals: { direct_transfer: false, exchange_pattern: false, bridge_pattern: false, timing_similarity: false, gas_pattern: false },
           },
           transactions,
           graphData,
-        });
-      } else {
-        const firstError = [walletRes, scoreRes, clusterRes, txRes, graphRes]
-          .find((r) => r.status === "rejected");
-        setState({
-          status: "error",
-          message: firstError?.status === "rejected" ? String(firstError.reason) : "API Error",
         });
       }
     });

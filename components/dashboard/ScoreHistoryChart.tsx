@@ -13,12 +13,17 @@ export default function ScoreHistoryChart({ address }: Props) {
   const [history, setHistory] = useState<ScoreHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(30);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
+    setError(null);
     getScoreHistory(address, undefined, days)
       .then(setHistory)
-      .catch(() => setHistory([]))
+      .catch((e) => {
+        setHistory([]);
+        setError(e?.message || "Failed to load score history");
+      })
       .finally(() => setLoading(false));
   }, [address, days]);
 
@@ -26,6 +31,14 @@ export default function ScoreHistoryChart({ address }: Props) {
     return (
       <div className="glass-card p-6 text-center text-text-muted text-sm">
         Loading score history...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="glass-card p-6 text-center text-danger text-sm">
+        Score History Error: {error}
       </div>
     );
   }
