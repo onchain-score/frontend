@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 import CryptoBackground from "@/components/CryptoBackground";
 import WalletInput from "@/components/WalletInput";
 import SplashScreen from "@/components/SplashScreen";
+import AuthButton from "@/components/AuthButton";
+import LanguageSelector from "@/components/LanguageSelector";
 
 export default function LandingPage() {
   const [showSplash, setShowSplash] = useState(true);
@@ -17,6 +19,19 @@ export default function LandingPage() {
 
       <main className="relative min-h-screen flex flex-col items-center justify-center px-4 py-16">
         <CryptoBackground />
+
+        {/* Nav bar */}
+        <nav className="fixed top-0 left-0 right-0 z-40 px-4 py-4">
+          <div className="max-w-5xl mx-auto flex items-center justify-between">
+            <span className="text-sm font-bold gradient-text tracking-tight">
+              Onchain Score
+            </span>
+            <div className="flex items-center gap-3">
+              <AuthButton />
+              <LanguageSelector />
+            </div>
+          </div>
+        </nav>
 
         {/* Title - large italic bold, Onchain=cyan, Score=purple like the design */}
         <motion.div
