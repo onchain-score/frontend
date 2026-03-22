@@ -30,10 +30,12 @@ import {
   getCreditScore,
   getWalletCluster,
   getTransactions,
+  getGraph,
   type WalletInfo,
   type CreditScoreResponse,
   type ClusterResponse,
   type TransactionItem,
+  type GraphResponse,
 } from "@/lib/api-client";
 import CategoryCard from "@/components/CategoryCard";
 import RiskAlert from "@/components/RiskAlert";
@@ -45,6 +47,11 @@ import TransactionTimeline from "@/components/dashboard/TransactionTimeline";
 import ClusterView from "@/components/dashboard/ClusterView";
 import type { NetworkNode, NetworkEdge } from "@/components/dashboard/NetworkGraph";
 import { toScoreResult } from "@/lib/score-adapter";
+import ScoreHistoryChart from "@/components/dashboard/ScoreHistoryChart";
+import BookmarkButton from "@/components/dashboard/BookmarkButton";
+import UserProfile from "@/components/UserProfile";
+import TransactionFilter from "@/components/dashboard/TransactionFilter";
+import RiskPathTracer from "@/components/dashboard/RiskPathTracer";
 
 type DashboardState =
   | { status: "loading" }
@@ -55,6 +62,7 @@ type DashboardState =
       score: CreditScoreResponse;
       cluster: ClusterResponse;
       transactions: TransactionItem[];
+      graphData: GraphResponse | null;
     };
 
 type TabId = "overview" | "network" | "flow" | "activity";
@@ -88,38 +96,36 @@ function DashboardContent({
       getCreditScore(address),
       getWalletCluster(address),
       getTransactions(address, undefined, 50),
-    ]).then(([walletRes, scoreRes, clusterRes, txRes]) => {
+      getGraph(address),
+    ]).then(([walletRes, scoreRes, clusterRes, txRes, graphRes]) => {
       const wallet = walletRes.status === "fulfilled" ? walletRes.value : null;
       const score = scoreRes.status === "fulfilled" ? scoreRes.value : null;
       const cluster = clusterRes.status === "fulfilled" ? clusterRes.value : null;
       const transactions = txRes.status === "fulfilled" ? txRes.value.transactions : [];
+      const graphData = graphRes.status === "fulfilled" ? graphRes.value : null;
 
-      if (wallet || score) {
+      if (!wallet || !score) {
+        const errors = [walletRes, scoreRes, clusterRes, txRes, graphRes]
+          .filter((r) => r.status === "rejected")
+          .map((r) => r.status === "rejected" ? String(r.reason) : "");
+        setState({
+          status: "error",
+          message: errors.length > 0
+            ? `API 호출 실패: ${errors.join(", ")}`
+            : "지갑 데이터를 불러올 수 없습니다",
+        });
+      } else {
         setState({
           status: "success",
-          wallet: wallet ?? {
-            address, chain: "ethereum", first_seen: null, last_seen: null,
-            tx_count: 0, wallet_age_days: 0, total_inflow_usdt: 0,
-            total_outflow_usdt: 0, unique_counterparties: 0,
-          },
-          score: score ?? {
-            cluster_id: "", wallets: [address], credit_score: 0,
-            risk_score: 0, trust_level: "Unknown", risk_level: "unknown",
-            features: {}, scored_at: "",
-          },
+          wallet,
+          score,
           cluster: cluster ?? {
             cluster_id: "", confidence: 0,
-            wallets: [{ address, chain: "ethereum", confidence: 1 }],
+            wallets: [{ address, chain: wallet.chain, confidence: 1 }],
             signals: { direct_transfer: false, exchange_pattern: false, bridge_pattern: false, timing_similarity: false, gas_pattern: false },
           },
           transactions,
-        });
-      } else {
-        const firstError = [walletRes, scoreRes, clusterRes, txRes]
-          .find((r) => r.status === "rejected");
-        setState({
-          status: "error",
-          message: firstError?.status === "rejected" ? String(firstError.reason) : "API Error",
+          graphData,
         });
       }
     });
@@ -152,6 +158,7 @@ function DashboardContent({
               <WalletAvatar address={address} size={18} />
               <span className="text-white/60 text-xs font-mono">{formatAddress(address)}</span>
             </div>
+            <BookmarkButton address={address} chain={state.status === "success" ? state.wallet.chain : "ethereum"} />
             <LanguageSelector />
           </div>
         </div>
@@ -438,7 +445,7 @@ function OverviewTab({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25 }}
       >
-        <RiskAlert riskAnalysis={sr.riskAnalysis} index={0} />
+        <RiskAlert riskAnalysis={sr.riskAnalysis} index={0} address={address} />
       </motion.div>
 
       {/* Category Cards */}
@@ -457,6 +464,12 @@ function OverviewTab({
       >
         <ShareCard result={sr} />
       </motion.div>
+
+      {/* Score History Chart */}
+      <ScoreHistoryChart address={address} />
+
+      {/* User Profile & Bookmarks */}
+      <UserProfile />
 
       {/* Transaction Flow list */}
       <motion.div
@@ -642,7 +655,31 @@ function NetworkTab({
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      <NetworkGraph nodes={nodes} edges={edges} width={700} height={450} />
+      <NetworkGraph
+        nodes={state.graphData?.nodes?.map(n => ({
+          id: n.address,
+          type: n.type as "wallet" | "exchange" | "protocol" | "risk",
+          label: n.address,
+          volume: 0,
+          chain: n.chain,
+        })) ?? nodes}
+        edges={state.graphData?.edges?.map(e => ({
+          source: e.from,
+          target: e.to,
+          amount: e.amount,
+          chain: e.chain,
+        })) ?? edges}
+        riskPaths={state.graphData?.risk_paths}
+        width={700}
+        height={450}
+      />
+
+      {state.graphData?.risk_paths && state.graphData.risk_paths.length > 0 && (
+        <RiskPathTracer
+          riskPaths={state.graphData.risk_paths}
+          centerAddress={address}
+        />
+      )}
     </motion.div>
   );
 }
@@ -725,6 +762,15 @@ function ActivityTab({
       className="space-y-6"
     >
       <TransactionTimeline transactions={timelineData} />
+
+      {/* Transaction Filter / Search */}
+      <div className="glass-card p-5">
+        <h2 className="text-sm font-semibold text-text mb-4 flex items-center gap-2">
+          <Activity className="w-4 h-4 text-accent" />
+          Filter & Search
+        </h2>
+        <TransactionFilter address={address} />
+      </div>
 
       {/* Volume Summary below the chart */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
