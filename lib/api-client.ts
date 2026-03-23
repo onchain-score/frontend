@@ -41,12 +41,28 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
 /** Spring Boot user/CRUD endpoints (with optional JWT) */
 async function fetchUserApi<T>(path: string, options?: RequestInit): Promise<T> {
   let token: string | null = null;
-  try {
-    const { createClient } = await import("@/lib/supabase/client");
-    const supabase = createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    token = session?.access_token ?? null;
-  } catch {}
+  if (typeof window !== "undefined") {
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      // getSession reads from local storage (client-side only)
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        console.warn("Supabase getSession error:", error.message);
+      }
+      token = data?.session?.access_token ?? null;
+      // If no session from getSession, try getUser which refreshes the token
+      if (!token) {
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user) {
+          const { data: refreshed } = await supabase.auth.getSession();
+          token = refreshed?.session?.access_token ?? null;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to get auth token:", e);
+    }
+  }
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
