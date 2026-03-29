@@ -13,8 +13,8 @@ export default function CryptoBackground() {
       <div
         className="absolute inset-0 flex items-center justify-center"
         style={{
-          opacity: 0.3,
-          filter: "hue-rotate(200deg) saturate(1.8) brightness(0.7)",
+          opacity: 0.08,
+          filter: "hue-rotate(200deg) saturate(1.8) brightness(0.5)",
         }}
       >
         <Lottie
